@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carbon | Python Studio</title>
+    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+    <script src="https://skulpt.org/js/skulpt.min.js"></script>
+    <script src="https://skulpt.org/js/skulpt-stdlib.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #000000;
+            --panel: #0a0a0a;
+            --border: #1f1f1f;
+            --accent: #3b82f6;
+            --text-secondary: #71717a;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: #e5e7eb;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Nav Header */
+        header {
+            height: 64px;
+            padding: 0 24px;
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+
+        .logo {
+            font-weight: 700;
+            letter-spacing: -1px;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        /* Workspace Grid */
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            flex: 1;
+            background: var(--border); /* Creates the 1px divider */
+            gap: 1px;
+        }
+
+        /* Editor Section */
+        .editor-container {
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        #code-editor {
+            flex: 1;
+            background: var(--bg);
+            border: none;
+            padding: 30px;
+            color: #d1d5db;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
+            resize: none;
+            outline: none;
+            line-height: 1.7;
+        }
+
+        /* Output Section */
+        .output-container {
+            background: var(--panel);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .output-header {
+            padding: 12px 20px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+        }
+
+        #console-output {
+            flex: 1;
+            padding: 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: #a1a1aa;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        /* Buttons */
+        .btn-group { display: flex; gap: 12px; }
+        
+        button {
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .run-btn {
+            background: #ffffff;
+            color: #000000;
+            border: none;
+        }
+
+        .run-btn:hover {
+            background: #e5e5e5;
+            transform: translateY(-1px);
+        }
+
+        .back-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .back-btn:hover {
+            color: #fff;
+            border-color: #444;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
+
+        .output-error { color: #f87171; font-weight: bold; }
+        .output-success { color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">
+        <div class="logo-dot"></div>
+        Dark-Syntax <span style="color: var(--text-secondary); font-size: 12px; font-weight: 400;">v2.0</span>
+    </div>
+    <div class="btn-group">
+        <button class="back-btn" onclick="window.location.href='index.html'">DASHBOARD</button>
+        <button class="run-btn" onclick="executePython()">RUN SCRIPT</button>
+    </div>
+</header>
+
+<div class="workspace">
+    <div class="editor-container">
+        <textarea id="code-editor" spellcheck="false">
+# Carbon Studio Python Runtime
+def main():
+    user_id = "STUDENT_01"
+    status = "AUTHORIZED"
+    
+    print(f"--- SYSTEM LOG ---")
+    print(f"USER: {user_id}")
+    print(f"STATUS: {status}")
+
+if __name__ == "__main__":
+    main()
+</textarea>
+    </div>
+
+    <div class="output-container">
+        <div class="output-header">Console Output</div>
+        <div id="console-output">Ready to execute...</div>
+    </div>
+</div>
+
+<script>
+    // Skulpt Output Function
+    function outf(text) { 
+        var mypre = document.getElementById("console-output"); 
+        mypre.innerHTML = mypre.innerHTML + text; 
+    } 
+
+    function builtinRead(x) {
+        if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
+            throw "File not found: '" + x + "'";
+        return Sk.builtinFiles["files"][x];
+    }
+
+    function executePython() { 
+        const output = document.getElementById("console-output");
+        const prog = document.getElementById("code-editor").value; 
+        
+        // Initializing Console
+        output.innerHTML = "<span class='output-success'>[EXECUTING]</span>\n";
+        
+        Sk.pre = "console-output";
+        Sk.configure({output:outf, read:builtinRead}); 
+
+        var myPromise = Sk.misceval.asyncToPromise(function() {
+            return Sk.importMainWithBody("<stdin>", false, prog, true);
+        });
+
+        myPromise.then(function(mod) {
+            outf("\n<span class='output-success'>[PROCESS_FINISHED]</span>");
+        }, function(err) {
+            outf("<span class='output-error'>\n" + err.toString() + "</span>");
+        });
+    }
+</script>
+
+</body>
+</html>
