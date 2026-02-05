@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carbon Studio | IDE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card: #121212;
+            --border: #262626;
+            --accent: #3b82f6;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: #e5e5e5;
+            overflow-x: hidden;
+        }
+
+        /* Smooth Page Transitions */
+        .page { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .hidden-page { opacity: 0; transform: scale(0.98); pointer-events: none; position: absolute; }
+
+        /* Modern Bento Cards */
+        .bento-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .bento-card:hover {
+            border-color: #404040;
+            background: #161616;
+            transform: translateY(-4px);
+        }
+        .bento-card::after {
+            content: "";
+            position: absolute; inset: 0;
+            background: radial-gradient(600px circle at var(--x) var(--y), rgba(255,255,255,0.06), transparent 40%);
+        }
+
+        /* Compiler Layout */
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 450px;
+            height: calc(100vh - 70px);
+            gap: 1px;
+            background: var(--border);
+        }
+
+        #editor-container { background: #0e0e0e; }
+        
+        .terminal-box {
+            font-family: 'JetBrains Mono', monospace;
+            background: #0e0e0e;
+            color: #a3a3a3;
+        }
+
+        .glow-btn {
+            background: white;
+            color: black;
+            transition: all 0.3s ease;
+        }
+        .glow-btn:hover {
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="home-page" class="page min-h-screen flex flex-col items-center justify-center p-6">
+        <div class="max-w-5xl w-full">
+            <header class="mb-12">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg"></div>
+                    <span class="text-xl font-bold tracking-tighter">CARBON.</span>
+                </div>
+                <h1 class="text-5xl font-bold text-white mb-4">New Project</h1>
+                <p class="text-neutral-500 text-lg font-light">Choose your environment to start coding.</p>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div onclick="openCompiler('python')" class="bento-card md:col-span-2 p-8 rounded-3xl cursor-pointer">
+                    <span class="text-blue-400 text-xs font-mono uppercase tracking-widest">Environment</span>
+                    <h2 class="text-2xl font-semibold mt-2 text-white">Python 3.10</h2>
+                    <p class="text-neutral-500 mt-4 text-sm">Scripting, AI, and Logic. Fast execution with virtual environment support.</p>
+                </div>
+
+                <div onclick="openCompiler('html')" class="bento-card md:col-span-2 p-8 rounded-3xl cursor-pointer">
+                    <span class="text-yellow-400 text-xs font-mono uppercase tracking-widest">Front-end</span>
+                    <h2 class="text-2xl font-semibold mt-2 text-white">Live Web Dev</h2>
+                    <p class="text-neutral-500 mt-4 text-sm">Real-time HTML/CSS and Tailwind rendering. Instant visual feedback.</p>
+                </div>
+
+                <div onclick="openCompiler('c')" class="bento-card p-6 rounded-3xl cursor-pointer">
+                    <h3 class="text-lg font-medium text-white">C Runtime</h3>
+                    <p class="text-neutral-500 mt-2 text-xs">Low-level systems programming.</p>
+                </div>
+
+                <div onclick="openCompiler('java')" class="bento-card p-6 rounded-3xl cursor-pointer">
+                    <h3 class="text-lg font-medium text-white">Java VM</h3>
+                    <p class="text-neutral-500 mt-2 text-xs">Enterprise object-oriented apps.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="compiler-page" class="page hidden-page h-screen flex flex-col">
+        <nav class="h-[70px] border-b border-[#262626] flex items-center justify-between px-6 bg-[#0a0a0a]">
+            <div class="flex items-center gap-6">
+                <button onclick="goHome()" class="text-neutral-500 hover:text-white transition">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5m7-7l-7 7 7 7"></path></svg>
+                </button>
+                <div class="h-4 w-[1px] bg-neutral-800"></div>
+                <span id="current-lang-label" class="text-sm font-mono text-blue-400">main.py</span>
+            </div>
+
+            <button onclick="runCode()" class="glow-btn px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest">
+                Run Script
+            </button>
+        </nav>
+
+        <div class="workspace">
+            <div id="editor-container"></div>
+            
+            <div class="flex flex-col bg-[#0a0a0a]">
+                <div class="px-5 py-3 border-b border-[#262626] text-[10px] uppercase tracking-widest text-neutral-500 font-bold">
+                    Console Output
+                </div>
+                <div id="output-box" class="terminal-box p-6 flex-grow overflow-auto text-sm leading-relaxed">
+                    Ready to execute...
+                </div>
+                <iframe id="preview-container" class="hidden w-full h-full bg-white"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let editor;
+        const boilerplates = {
+            python: "def greet():\n    print(\"Hello from Carbon Studio\")\n\ngreet()",
+            c: "#include <stdio.h>\n\nint main() {\n    printf(\"C Runtime Active\\n\");\n    return 0;\n}",
+            java: "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Java VM running\");\n    }\n}",
+            html: "<div class='hero'>\n  <h1>Carbon.</h1>\n  <p>Minimalist Web Dev</p>\n</div>\n\n<style>\n  body { background: #000; color: white; height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif; }\n  .hero { text-align: center; border: 1px solid #333; padding: 3rem; border-radius: 2rem; }\n  h1 { font-size: 3rem; margin: 0; color: #3b82f6; }\n</style>"
+        };
+
+        // Initialize Monaco
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' } });
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: "",
+                language: 'python',
+                theme: 'vs-dark',
+                fontSize: 15,
+                fontFamily: 'JetBrains Mono',
+                minimap: { enabled: false },
+                automaticLayout: true,
+                padding: { top: 30 },
+                lineNumbers: 'on',
+                glyphMargin: false,
+                folding: false,
+                lineDecorationsWidth: 0,
+                lineNumbersMinChars: 3
+            });
+        });
+
+        // Navigation Logic
+        function openCompiler(lang) {
+            document.getElementById('home-page').classList.add('hidden-page');
+            document.getElementById('compiler-page').classList.remove('hidden-page');
+            
+            const label = lang === 'html' ? 'index.html' : `main.${lang}`;
+            document.getElementById('current-lang-label').innerText = label;
+            
+            monaco.editor.setModelLanguage(editor.getModel(), lang === 'c' ? 'cpp' : lang);
+            editor.setValue(boilerplates[lang]);
+
+            const isHtml = lang === 'html';
+            document.getElementById('preview-container').classList.toggle('hidden', !isHtml);
+            document.getElementById('output-box').classList.toggle('hidden', isHtml);
+        }
+
+        function goHome() {
+            document.getElementById('compiler-page').classList.add('hidden-page');
+            document.getElementById('home-page').classList.remove('hidden-page');
+        }
+
+        function runCode() {
+            const lang = document.getElementById('current-lang-label').innerText;
+            const outputBox = document.getElementById('output-box');
+
+            if (lang === 'index.html') {
+                const preview = document.getElementById('preview-container').contentWindow.document;
+                preview.open();
+                preview.write(editor.getValue());
+                preview.close();
+                return;
+            }
+
+            outputBox.innerHTML = `<span class="text-white">$ Running ${lang}...</span><br>Execution complete.<br><br>Hello from Carbon Studio`;
+        }
+
+        // Mouse Move Effect for Bento Cards
+        document.querySelectorAll('.bento-card').forEach(card => {
+            card.onmousemove = e => {
+                const rect = card.getBoundingClientRect();
+                card.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                card.style.setProperty('--y', `${e.clientY - rect.top}px`);
+            };
+        });
+    </script>
+</body>
+</html>
